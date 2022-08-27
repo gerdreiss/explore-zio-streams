@@ -10,8 +10,8 @@ object ZIOStreams extends ZIOAppDefault:
 
   // Sink = destination of the elements in the stream
   val sum: ZSink[Any, Nothing, Int, Nothing, Int]          = ZSink.sum[Int]
-  val take5: ZSink[Any, Nothing, Int, Int, Chunk[Int]]     = ZSink.take(5)
-  val take5s: ZSink[Any, Nothing, Int, Int, Chunk[String]] = take5.map(_.map(_.toString))
+  val take5i: ZSink[Any, Nothing, Int, Int, Chunk[Int]]    = ZSink.take(5)
+  val take5s: ZSink[Any, Nothing, Int, Int, Chunk[String]] = take5i.map(_.map(_.toString))
 
   // leftovers
   val take5leftovers: ZSink[Any, Nothing, Int, Int, (Chunk[String], Chunk[Int])] =
@@ -21,13 +21,13 @@ object ZIOStreams extends ZIOAppDefault:
     take5s.ignoreLeftover
 
   // contramap
-  val take5ss: ZSink[Any, Nothing, String, Int, Chunk[Int]] =
-    take5.contramap(_.toInt)
+  val take5contra: ZSink[Any, Nothing, String, Int, Chunk[Int]] =
+    take5i.contramap(_.toInt)
 
   // ZStream[String]          -> ZSink[Int].contramap(...)
   // ZStream[String].map(...) -> ZSink
 
-  val zio: ZIO[Any, Nothing, Int] = numbers.run(sum)
+  val summed: ZIO[Any, Nothing, Int] = numbers.run(sum)
 
   // ZPipeline
   val businessLogic: ZPipeline[Any, Nothing, String, Int] = ZPipeline.map(_.toInt)
@@ -43,4 +43,4 @@ object ZIOStreams extends ZIOAppDefault:
 
   val zio4: ZIO[Any, Nothing, Int] = strings.via(appLogic).run(sum)
 
-  override def run = zio4.debug
+  override def run: UIO[Unit] = zio4.debug.unit
