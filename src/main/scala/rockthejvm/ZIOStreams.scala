@@ -1,3 +1,5 @@
+package rockthejvm
+
 import zio.*
 import zio.json.*
 import zio.stream.*
