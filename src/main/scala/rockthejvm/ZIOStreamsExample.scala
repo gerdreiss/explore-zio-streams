@@ -80,24 +80,24 @@ object ZIOStreamsExample extends ZIOAppDefault:
 
   val punctuationRegex: Regex = """\p{Punct}""".r
 
-  val parseHashPipeline: ZPipeline[Any, Nothing, String, String] =
+  val parseHashtagsPipeline: ZPipeline[Any, Nothing, String, String] =
     ZPipeline.filter(hashFilter)
 
-  val removePunctuationPipeline: ZPipeline[Any, Nothing, String, String] =
+  val removePunctuationsPipeline: ZPipeline[Any, Nothing, String, String] =
     ZPipeline.map(s => punctuationRegex.replaceAllIn(s, ""))
 
-  val lowercasePipeline: ZPipeline[Any, Nothing, String, String] =
+  val toLowercasePipeline: ZPipeline[Any, Nothing, String, String] =
     ZPipeline.map(_.toLowerCase)
 
-  val collectTagsPipeline: ZPipeline[Any, CharacterCodingException, Byte, String] =
+  val collectHashtagsPipeline: ZPipeline[Any, CharacterCodingException, Byte, String] =
     ZPipeline.utf8Decode >>>
       ZPipeline.splitLines >>>
       ZPipeline.splitOn(" ") >>>
-      parseHashPipeline >>>
-      removePunctuationPipeline >>>
-      lowercasePipeline
+      parseHashtagsPipeline >>>
+      removePunctuationsPipeline >>>
+      toLowercasePipeline
 
-  val addTagsPipeline: Set[String] => ZPipeline[Any, Nothing, String, String] =
+  val addHashtagsPipeline: Set[String] => ZPipeline[Any, Nothing, String, String] =
     tags => ZPipeline.map(_.replace("tags []", s"tags [${tags.mkString(", ")}]"))
 
   val addLinksPipeline: ZPipeline[Any, Nothing, String, String] =
@@ -118,7 +118,7 @@ object ZIOStreamsExample extends ZIOAppDefault:
     tags =>
       ZPipeline.utfDecode >>>
         ZPipeline.splitLines >>>
-        addTagsPipeline(tags) >>>
+        addHashtagsPipeline(tags) >>>
         addLinksPipeline >>>
         addNewlinePipeline >>>
         ZPipeline.utf8Encode
@@ -126,21 +126,21 @@ object ZIOStreamsExample extends ZIOAppDefault:
   def writeFileSink(dir: String, filename: String): ZSink[Any, Throwable, Byte, Byte, Long] =
     ZSink.fromFileName(dir + "/" + filename)
 
-  val collectTagsSink: ZSink[Any, Nothing, String, Nothing, Set[String]] =
+  val collectHashtagsSink: ZSink[Any, Nothing, String, Nothing, Set[String]] =
     ZSink.collectAllToSet
 
   def autoTag(filename: String, contents: Array[Byte]): Task[(String, Set[String])] =
     for
-      tags <- ZStream
-                .fromIterable(contents)
-                .via(collectTagsPipeline)
-                .run(collectTagsSink)
-      _    <- Console.printLine(s"generating file: $filename")
-      _    <- ZStream
-                .fromIterable(contents)
-                .via(regeneratePostPipeline(tags))
-                .run(writeFileSink("src/main/resources/data/zio-streams", filename))
-    yield (filename, tags)
+      hashtags <- ZStream
+                    .fromIterable(contents)
+                    .via(collectHashtagsPipeline)
+                    .run(collectHashtagsSink)
+      _        <- Console.printLine(s"generating file: $filename")
+      _        <- ZStream
+                    .fromIterable(contents)
+                    .via(regeneratePostPipeline(hashtags))
+                    .run(writeFileSink("src/main/resources/data/zio-streams", filename))
+    yield (filename, hashtags)
 
   val autoTagAll: Task[Map[String, Set[String]]] =
     ZIO.foreach(fileMap) { case (filename, contents) =>
@@ -148,7 +148,7 @@ object ZIOStreamsExample extends ZIOAppDefault:
     }
 
   // Map[filename, all tags in that file] => Map[tag, all files with that tag]
-  def createTagIndexFile(tagMap: Map[String, Set[String]]) =
+  def createHashtagIndexFile(tagMap: Map[String, Set[String]]) =
     val searchMap = tagMap.values.toSet.flatten
       .map(tag => tag -> tagMap.filter(_._2.contains(tag)).keys.toSet)
       .toMap
@@ -161,7 +161,7 @@ object ZIOStreamsExample extends ZIOAppDefault:
     for
       tagMap <- autoTagAll
       _      <- Console.printLine(s"generating tag index")
-      _      <- createTagIndexFile(tagMap)
+      _      <- createHashtagIndexFile(tagMap)
     yield ()
 
   override def run: ZIO[Any & (ZIOAppArgs & Scope), Any, Any] = parseProgram
