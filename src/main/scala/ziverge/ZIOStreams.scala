@@ -13,21 +13,23 @@ object ZIOStreams extends ZIOAppDefault:
 
   def collector(n: Int) = ZSink.collectAllN[Int](n)
 
-  val runStream = randomNumbers >>> filterer >>> doubler >>> collector(10)
+  val runStream =
+    randomNumbers >>> filterer >>> doubler >>> collector(10)
 
-  val runStreams = randomNumbers
-    .broadcast(2, 16)
-    .flatMap { streams =>
-      val subscriber1 = streams(0) >>> doubler >>> filterer >>> collector(10)
-      val subscriber2 = streams(1) >>> doubler >>> filterer >>> collector(5)
-      subscriber1 <&> subscriber2
-    }
+  val runStreams =
+    randomNumbers
+      .broadcast(2, 16)
+      .flatMap { streams =>
+        val subscriber1 = streams(0) >>> doubler >>> filterer >>> collector(10)
+        val subscriber2 = streams(1) >>> doubler >>> filterer >>> collector(5)
+        subscriber1 <&> subscriber2
+      }
 
   val runDynamicStreams =
     for
       shared <- randomNumbers.broadcastDynamic(16)
-      c1     <- shared >>> doubler >>> filterer >>> collector(10)
-      c2     <- shared >>> doubler >>> filterer >>> collector(5)
-    yield (c1, c2)
+      chunk1 <- shared >>> doubler >>> filterer >>> collector(10)
+      chunk2 <- shared >>> doubler >>> filterer >>> collector(5)
+    yield (chunk1, chunk2)
 
   override def run = runDynamicStreams.debug("Got: ")

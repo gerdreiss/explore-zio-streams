@@ -19,7 +19,7 @@ object ZIOStreams extends ZIOAppDefault:
 
   // leftovers
   val take5leftovers: ZSink[Any, Nothing, Int, Int, (Chunk[String], Chunk[Int])] =
-    take5s.collectLeftover //                        ^^ output    ^^ leftovers
+    take5s.collectLeftover //                        ^^ output      ^^ leftovers
 
   val take5ignore: ZSink[Any, Nothing, Int, Nothing, Chunk[String]] =
     take5s.ignoreLeftover
@@ -88,10 +88,7 @@ object ZIOStreams extends ZIOAppDefault:
   // catch
   val caughtStream = failingStream.catchAll(_ => recoveryStream) >>> sink
 
-  val caughtSomeStream = failingStream
-    .catchSome { case _: IOException =>
-      recoveryStream
-    } >>> sink
+  val caughtSomeStream = failingStream.catchSome { case _: IOException => recoveryStream } >>> sink
 
   val errorContained = failingStream.either >>> ZSink.collectAll
 

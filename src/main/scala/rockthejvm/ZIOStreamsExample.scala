@@ -149,12 +149,14 @@ object ZIOStreamsExample extends ZIOAppDefault:
 
   // Map[filename, all tags in that file] => Map[tag, all files with that tag]
   def createHashtagIndexFile(tagMap: Map[String, Set[String]]) =
-    val searchMap = tagMap.values.toSet.flatten
-      .map(tag => tag -> tagMap.filter(_._2.contains(tag)).keys.toSet)
-      .toMap
-
     ZStream
-      .fromIterable(searchMap.toJsonPretty.getBytes)
+      .fromIterable {
+        tagMap.values.toSet.flatten
+          .map(tag => tag -> tagMap.filter(_._2.contains(tag)).keys.toSet)
+          .toMap
+          .toJsonPretty
+          .getBytes
+      }
       .run(ZSink.fromFileName("src/main/resources/data/zio-streams/search.json"))
 
   val parseProgram =
